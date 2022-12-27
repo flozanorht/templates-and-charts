@@ -1,0 +1,8 @@
+memoryLimit: "512Mi"
+serviceName: "mysql"
+databaseUser: "user"
+databasePassword: "password"
+databaseRootPassword: "secret"
+databaseName: "sampledb"
+volumeCapacity: "1Gi"
+imageTag: "1"
