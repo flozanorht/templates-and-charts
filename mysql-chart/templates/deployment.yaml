@@ -24,22 +24,22 @@ spec:
           valueFrom:
             secretKeyRef:
               key: database-user
-              name: mysql
+              name: {{ .Values.serviceName }}
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-password
-              name: mysql
+              name: {{ .Values.serviceName }}
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-root-password
-              name: mysql
+              name: {{ .Values.serviceName }}
         - name: MYSQL_DATABASE
           valueFrom:
             secretKeyRef:
               key: database-name
-              name: mysql
+              name: {{ .Values.serviceName }}
         ports:
         - containerPort: 3306
           name: mysql
