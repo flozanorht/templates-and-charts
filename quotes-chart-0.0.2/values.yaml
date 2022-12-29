@@ -1,0 +1,8 @@
+memoryLimit: "512Mi"
+serviceName: "quotes"
+databaseUser: "user"
+databasePassword: "password"
+databaseRootPassword: "secret"
+databaseName: "quotes"
+volumeCapacity: "1Gi"
+imageTag: "1"

@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.serviceName }}-update-db
+  labels:
+    app: {{ .Values.serviceName }}
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 360
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.serviceName }}
+        role: client
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-db
+        image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+        env:
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: database-user
+              name: {{ .Values.serviceName }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: database-password
+              name: {{ .Values.serviceName }}
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: database-name
+              name: {{ .Values.serviceName }}
+        command:
+        - bash
+        - -c
+        - |
+          echo "Waiting for database server"
+          counter=9
+          while [ $counter -gt 0 ]; do
+            echo "$counter... "
+            sleep 10
+            MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -h{{ .Values.serviceName }} -u$MYSQL_USER ping && break
+            let counter--
+          done
+          if [ $counter -eq 0 ]; then
+            echo "Database server startup took too long :-(" 1>&2
+            exit 1
+          fi
+      containers:
+      - image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+        name: update-db
+        env:
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: database-user
+              name: {{ .Values.serviceName }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: database-password
+              name: {{ .Values.serviceName }}
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: database-name
+              name: {{ .Values.serviceName }}
+        command:
+        - bash
+        - -c
+        - |
+          echo "Creating and populating the quotes table"
+          # Source: https://www.freshworks.com/freshservice/general/top-it-quotes-blog/
+          MYSQL_PWD="$MYSQL_PASSWORD" mysql -v -h{{ .Values.serviceName }} -u$MYSQL_USER $MYSQL_DATABASE <<SQL
+          insert into famousquotes values (6, 'Try harder next time... is not a problem management method mentioned in ITIL.');
+          insert into famousquotes values (7, 'Technology itself is neither good or bad. People are good or bad.');
+          insert into famousquotes values (8, 'Simplicity is the ultimate sophistication.');
+          insert into famousquotes values (9, 'IT is not just another department in an organization. It’s pervasive, like electricity.');
+          insert into famousquotes values (10, 'A fool with a tool is still a fool. Always have a goal, a plan & the tool as the enabler.');
+          select * from famousquotes;
+          SQL
