@@ -1,9 +1,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.serviceName }}-init-db
+  name: quotes-init
   labels:
-    app: {{ .Values.serviceName }}
+    app: quotes
   annotations:
     "helm.sh/hook": post-install
     "helm.sh/hook-delete-policy": before-hook-creation
@@ -13,29 +13,30 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Values.serviceName }}
+        app: quotes
         role: client
     spec:
       restartPolicy: Never
       initContainers:
+      # Cannot refer to mapped values: .Values.mysql.imageTag and other won't work. :-(
       - name: wait-db
-        image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+        image: registry.redhat.io/rhel8/mysql-80:1
         env:
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:
               key: database-user
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-password
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_DATABASE
           valueFrom:
             secretKeyRef:
               key: database-name
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         command:
         - bash
         - -c
@@ -45,7 +46,7 @@ spec:
           while [ $counter -gt 0 ]; do
             echo "$counter... "
             sleep 10
-            MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -h{{ .Values.serviceName }} -u$MYSQL_USER ping && break
+            MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -hquotes-db -u$MYSQL_USER ping && break
             let counter--
           done
           if [ $counter -eq 0 ]; then
@@ -53,31 +54,31 @@ spec:
             exit 1
           fi
       containers:
-      - image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+      - image: registry.redhat.io/rhel8/mysql-80:1
         name: init-db
         env:
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:
               key: database-user
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-password
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_DATABASE
           valueFrom:
             secretKeyRef:
               key: database-name
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         command:
         - bash
         - -c
         - |
           echo "Creating and populating the quotes table"
           # Source: https://www.freshworks.com/freshservice/general/top-it-quotes-blog/
-          MYSQL_PWD="$MYSQL_PASSWORD" mysql -v -h{{ .Values.serviceName }} -u$MYSQL_USER $MYSQL_DATABASE <<SQL
+          MYSQL_PWD="$MYSQL_PASSWORD" mysql -v -hquotes-db -u$MYSQL_USER $MYSQL_DATABASE <<SQL
           create table if not exists famousquotes (id integer primary key, quote varchar(200));
           truncate table famousquotes;
           insert into famousquotes values (1, 'The only constant in the technology industry is change.');
@@ -85,5 +86,10 @@ spec:
           insert into famousquotes values (3, 'Any sufficiently advanced bug is indistinguishable from a feature.');
           insert into famousquotes values (4, 'IT is ever-changing and there is the need to evolve in order to stay relevant.');
           insert into famousquotes values (5, 'A Release is like a boat. 80% of the holes plugged is not good enough.');
+                    insert into famousquotes values (6, 'Try harder next time... is not a problem management method mentioned in ITIL.');
+          insert into famousquotes values (7, 'Technology itself is neither good or bad. People are good or bad.');
+          insert into famousquotes values (8, 'Simplicity is the ultimate sophistication.');
+          insert into famousquotes values (9, 'IT is not just another department in an organization. It’s pervasive, like electricity.');
+          insert into famousquotes values (10, 'A fool with a tool is still a fool. Always have a goal, a plan & the tool as the enabler.');
           select * from famousquotes;
           SQL
