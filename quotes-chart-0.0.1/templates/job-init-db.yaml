@@ -1,9 +1,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.serviceName }}-init-db
+  name: quotes-init
   labels:
-    app: {{ .Values.serviceName }}
+    app: quotes
   annotations:
     "helm.sh/hook": post-install
     "helm.sh/hook-delete-policy": before-hook-creation
@@ -13,29 +13,30 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Values.serviceName }}
+        app: quotes
         role: client
     spec:
       restartPolicy: Never
       initContainers:
+      # Cannot refer to mapped values: .Values.mysql.imageTag and other won't work. :-(
       - name: wait-db
-        image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+        image: registry.redhat.io/rhel8/mysql-80:1
         env:
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:
               key: database-user
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-password
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_DATABASE
           valueFrom:
             secretKeyRef:
               key: database-name
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         command:
         - bash
         - -c
@@ -45,7 +46,7 @@ spec:
           while [ $counter -gt 0 ]; do
             echo "$counter... "
             sleep 10
-            MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -h{{ .Values.serviceName }} -u$MYSQL_USER ping && break
+            MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -hquotes-db -u$MYSQL_USER ping && break
             let counter--
           done
           if [ $counter -eq 0 ]; then
@@ -53,31 +54,31 @@ spec:
             exit 1
           fi
       containers:
-      - image: registry.redhat.io/rhel8/mysql-80:{{ .Values.imageTag }}
+      - image: registry.redhat.io/rhel8/mysql-80:1
         name: init-db
         env:
         - name: MYSQL_USER
           valueFrom:
             secretKeyRef:
               key: database-user
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               key: database-password
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         - name: MYSQL_DATABASE
           valueFrom:
             secretKeyRef:
               key: database-name
-              name: {{ .Values.serviceName }}
+              name: quotes-db
         command:
         - bash
         - -c
         - |
           echo "Creating and populating the quotes table"
           # Source: https://www.freshworks.com/freshservice/general/top-it-quotes-blog/
-          MYSQL_PWD="$MYSQL_PASSWORD" mysql -v -h{{ .Values.serviceName }} -u$MYSQL_USER $MYSQL_DATABASE <<SQL
+          MYSQL_PWD="$MYSQL_PASSWORD" mysql -v -hquotes-db -u$MYSQL_USER $MYSQL_DATABASE <<SQL
           create table if not exists famousquotes (id integer primary key, quote varchar(200));
           truncate table famousquotes;
           insert into famousquotes values (1, 'The only constant in the technology industry is change.');

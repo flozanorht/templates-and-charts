@@ -1,8 +1,12 @@
-memoryLimit: "512Mi"
-serviceName: "quotes"
-databaseUser: "user"
-databasePassword: "password"
-databaseRootPassword: "secret"
-databaseName: "quotes"
-volumeCapacity: "1Gi"
-imageTag: "1"
+# The quotes chart defines no values of its own.
+
+# changes here need to be replicated on the hook jobs
+mysql:
+  memoryLimit: "512Mi"
+  serviceName: "quotes-db"
+  databaseUser: "user"
+  databasePassword: "password"
+  databaseRootPassword: "secret"
+  databaseName: "quotes"
+  volumeCapacity: "1Gi"
+  imageTag: "1"
